@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="light" data-size="medium" data-font="standard">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartRevision - Coach de Révision Intelligent</title>
+    <link rel="stylesheet" href="style.css">
+
+    <!-- ================= PWA : INSTALLATION SUR L'ÉCRAN D'ACCUEIL ================= -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#173f27">
+    <link rel="icon" href="icon-192.png">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SmartRevision">
+</head>
+<body>
+
+    <!-- ================= ÉCRAN DE VERROUILLAGE (ACCÈS APPLI) ================= -->
+    <div id="lock-screen" class="lock-screen">
+        <div class="lock-card">
+            <div class="lock-icon">🔒</div>
+            <h2 class="lock-title">SmartRevision</h2>
+            <p class="lock-subtitle">Entre le code du jour pour accéder à l'appli.</p>
+            <input type="text" id="lock-code-input" class="lock-input" placeholder="Code du jour"
+                   autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12"
+                   onkeydown="if(event.key==='Enter') window.lock.tryUnlock()">
+            <button id="lock-submit-btn" class="lock-submit-btn" onclick="window.lock.tryUnlock()">Déverrouiller</button>
+            <p id="lock-status" class="lock-status hidden"></p>
+        </div>
+    </div>
+
+    <!-- ================= MODALE : CODE ÉDITEUR (ACCÈS RENFORCÉ) ================= -->
+    <div id="editor-code-modal" class="lock-screen hidden">
+        <div class="lock-card">
+            <div class="lock-icon">🛠️</div>
+            <h2 class="lock-title">Mode Éditeur</h2>
+            <p class="lock-subtitle">Ce mode nécessite un code spécifique.</p>
+            <input type="text" id="editor-code-input" class="lock-input" placeholder="Code éditeur"
+                   autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12"
+                   onkeydown="if(event.key==='Enter') window.lock.tryEditorUnlock()">
+            <div class="lock-modal-actions">
+                <button class="lock-cancel-btn" onclick="window.lock.cancelEditorPrompt()">Annuler</button>
+                <button id="editor-code-submit-btn" class="lock-submit-btn" onclick="window.lock.tryEditorUnlock()">Valider</button>
+            </div>
+            <p id="editor-code-status" class="lock-status hidden"></p>
+        </div>
+    </div>
+
+    <!-- ================= BARRE SUPÉRIEURE (HEADER) ================= -->
+    <header class="app-header">
+        <h1 id="app-title" onclick="window.app.switchView('dashboard')">🧠 SmartRevision</h1>
+        <button id="toggle-mode-btn" class="btn-toggle" onclick="window.app.toggleAdminMode()">Mode Éditeur</button>
+    </header>
+
+    <!-- ================= CONSTRUCTEUR GLOBAL : ZONE ÉTUDIANT ================= -->
+    <main id="student-zone" class="view-zone active">
+        
+        <!-- 1. TABLEAU DE BORD (ACCUEIL) -->
+        <section id="view-dashboard" class="app-view active">
+            <!-- Mini barre de stats rapide style Duolingo -->
+            <div class="user-stats-bar">
+                <span class="stat-item" title="Série de jours">🔥 <span id="stat-streak">0</span></span>
+                <span class="stat-item" title="Points d'expérience">⭐ <span id="stat-xp">0</span></span>
+                <span class="stat-item" title="Vies restantes">❤️ <span id="stat-lives">5</span></span>
+            </div>
+
+            <!-- Bandeau affiché uniquement quand les vies sont à 0 -->
+            <div id="lives-recharge-banner" class="lives-recharge-banner hidden">
+                ⏳ Vies rechargées dans <span id="lives-recharge-countdown">60:00</span> — révise tes fiches en attendant !
+            </div>
+            
+            <!-- Objectifs quotidiens -->
+            <div class="daily-objectives">
+                <h3>📅 Objectifs du jour</h3>
+                <ul id="objectives-list">
+                    <!-- Généré dynamiquement en JavaScript -->
+                </ul>
+            </div>
+
+            <h2>📚 Mes Cours</h2>
+            <div id="courses-list" class="grid-courses">
+                <!-- Les cartes des cours disponibles s'afficheront ici -->
+            </div>
+        </section>
+
+        <!-- 2. LECTEUR DE COURS DÉCOUPÉ (MODE APPRENTISSAGE) -->
+        <section id="view-reader" class="app-view">
+            <div class="reader-header">
+                <button class="btn-back" onclick="window.app.switchView('dashboard')">⬅️ Quitter</button>
+                <div class="progress-container">
+                    <div id="reader-progress-bar" class="progress-bar"></div>
+                </div>
+                <div id="pomodoro-timer" class="pomodoro-badge">⏱️ 25:00</div>
+            </div>
+
+            <p id="reader-part-indicator" class="reader-part-indicator">Fiche 1/1</p>
+
+            <article id="learning-card" class="card-content">
+                <h2 id="part-title">Chargement du titre...</h2>
+                <div id="part-content">
+                    <!-- Contenu textuel et pédagogique de la sous-partie -->
+                </div>
+                
+                <div id="part-tip" class="box-tip hidden">
+                    <strong>💡 Astuce mémoire :</strong> <span id="part-tip-text"></span>
+                </div>
+                
+                <div id="part-example" class="box-example hidden">
+                    <strong>🧪 Exemple concret :</strong> <span id="part-example-text"></span>
+                </div>
+            </article>
+
+            <div class="reader-actions">
+                <button id="btn-next-part" class="btn-action-secondary" onclick="window.app.nextPart()">➡️ Page suivante</button>
+                <button class="btn-action-trigger" onclick="window.app.startQuiz()">🔥 Vérifier mes connaissances</button>
+            </div>
+        </section>
+
+        <!-- 3. ZONE DE QUIZ (INTERFACE PREMIUM EXACTE) -->
+        <section id="view-quiz" class="app-view">
+            
+            <!-- BLOC STATUT DU PARTICIPANT (Crème sur fond Vert Sombre) -->
+            <div class="quiz-status-card">
+                <div class="status-header">
+                    <div class="participant-info">
+                        <span class="participant-name">Tt</span>
+                        <span class="participant-label">PARTICIPANT</span>
+                    </div>
+                    <div id="quiz-timer" class="status-timer">19:57</div>
+                </div>
+
+                <!-- Grille 2x2 des scores en direct -->
+                <div class="status-grid">
+                    <div class="status-box">
+                        <span class="box-label">SCORE</span>
+                        <span id="quiz-score" class="box-value value-neutral">0</span>
+                    </div>
+                    <div class="status-box">
+                        <span class="box-label">NOTE /20</span>
+                        <span id="quiz-grade" class="box-value value-neutral">0.0</span>
+                    </div>
+                    <div class="status-box">
+                        <span class="box-label">BONNES</span>
+                        <span id="quiz-correct" class="box-value value-good">0</span>
+                    </div>
+                    <div class="status-box">
+                        <span class="box-label">MAUVAISES</span>
+                        <span id="quiz-wrong" class="box-value value-bad">0</span>
+                    </div>
+                </div>
+
+                <!-- Message de motivation et jauge de progression fine -->
+                <div id="quiz-motivation-box" class="motivation-banner">
+                    <p id="quiz-motivation-text">Prêt(e) ? Respire un grand coup, c'est parti !</p>
+                    <div class="mini-progress-bar">
+                        <div id="quiz-progress-line" style="width: 0%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BLOC DE LA QUESTION ACTIVE -->
+            <div class="quiz-question-card">
+                <div class="question-meta">
+                    <span id="quiz-question-number">QUESTION 1 / 10</span>
+                    <span class="question-time-left">⏱️ <span id="question-timer-val">37s</span></span>
+                </div>
+
+                <div id="quiz-question-badge" class="badge-qcm">QCM</div>
+
+                <h2 id="quiz-question-text" class="question-text">
+                    Chargement de la question...
+                </h2>
+
+                <!-- Zone d'injection des réponses (Boutons d'options) -->
+                <div id="quiz-options-container" class="options-list">
+                    <!-- Rempli par le script.js (Options A, B, C, Vrai/Faux, Text-inputs) -->
+                </div>
+            </div>
+
+            <!-- Box explicative de la correction intelligente (masquée par défaut) -->
+            <div id="quiz-feedback-box" class="feedback-panel hidden">
+                <div class="feedback-header">
+                    <span id="feedback-status-icon">💡</span>
+                    <h4 id="feedback-title">Explication</h4>
+                </div>
+                <p id="feedback-explanation"></p>
+                <button class="btn-action-trigger" onclick="window.app.nextStep()">Continuer ➡️</button>
+            </div>
+
+            <!-- Bouton persistant de validation -->
+            <button id="btn-validate-quiz" class="btn-validate-submit" onclick="window.app.validateAnswer()">Valider la réponse</button>
+        </section>
+
+        <!-- 4. STATISTIQUES, SUCCÈS ET CANVAS -->
+        <section id="view-stats" class="app-view">
+            <h2>📊 Mes Statistiques</h2>
+            <div class="stats-grid-dashboard">
+                <div class="stat-card"><h4>Temps Total</h4><p id="stat-total-time">0 min</p></div>
+                <div class="stat-card"><h4>Réponses</h4><p id="stat-total-answers">0</p></div>
+                <div class="stat-card"><h4>Précision</h4><p id="stat-success-rate">0%</p></div>
+            </div>
+
+            <h3>📈 Graphique d'Évolution</h3>
+            <div class="canvas-container">
+                <canvas id="stats-chart"></canvas>
+            </div>
+
+            <h3>🏆 Succès & Badges Débloqués</h3>
+            <div id="badges-container" class="grid-badges">
+                <!-- Injecté par JS (Ex: Premier cours fini, 10 jours de suite...) -->
+            </div>
+        </section>
+
+        <!-- 5. REGLAGES ET ACCESSIBILITÉ -->
+        <section id="view-settings" class="app-view">
+            <h2>⚙️ Réglages Généraux</h2>
+            
+            <div class="setting-item">
+                <div class="setting-info">
+                    <span class="setting-title">🌙 Mode Sombre</span>
+                    <span class="setting-desc">Optimise l'écran pour les révisions de nuit</span>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="setting-dark-mode" onchange="window.app.themeToggle(this.checked)">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <span class="setting-title">🔍 Taille des caractères</span>
+                    <span class="setting-desc">Ajuste le confort de lecture</span>
+                </div>
+                <select id="setting-font-size" class="select-custom" onchange="window.app.fontSizeChange(this.value)">
+                    <option value="small">Petit</option>
+                    <option value="medium" selected>Moyen</option>
+                    <option value="large">Grand</option>
+                    <option value="xlarge">Très grand</option>
+                </select>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <span class="setting-title">📖 Police OpenDyslexic</span>
+                    <span class="setting-desc font-dys">Aide à la lecture pour les étudiants dyslexiques</span>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="setting-dyslexia" onchange="window.app.fontToggle(this.checked)">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ================= CONSTRUCTEUR GLOBAL : ZONE ÉDITEUR (ADMIN) ================= -->
+    <aside id="editor-zone" class="view-zone">
+        
+        <!-- TABLEAU DE BORD DU CRÉATEUR -->
+        <section id="view-editor-dashboard" class="app-view active">
+            <h2>🛠️ Studio de Création Pédagogique</h2>
+            <button class="btn-admin-primary" onclick="window.app.openCourseCreator()">➕ Créer un nouveau cours</button>
+            
+            <div class="backup-data-card">
+                <h3>💾 Gestion des sauvegardes externes</h3>
+                <p class="text-muted">Télécharge tes cours pour les partager par message ou les sécuriser.</p>
+                <div class="backup-actions-grid">
+                    <button class="btn-backup-io" onclick="window.app.exportJSON()">📤 Exporter (JSON)</button>
+                    <button class="btn-backup-io" onclick="document.getElementById('import-file').click()">📥 Importer (JSON)</button>
+                </div>
+                <!-- LIGNE MODIFIÉE ET CORRIGÉE CI-DESSOUS -->
+                <input type="file" id="import-file" class="hidden" onchange="window.app.importJSON(event)">
+            </div>
+
+            <h3>Mes Documents en Cours d'Édition</h3>
+            <div id="editor-courses-list" class="list-editor-management">
+                <!-- Liste complète avec boutons de modification / suppression -->
+            </div>
+        </section>
+
+        <!-- MODULE DE CONCEPTION COMPLÈTE DE COURS -->
+        <section id="view-course-creator" class="app-view">
+            <div class="editor-nav-header">
+                <button class="btn-back" onclick="window.app.switchView('editor-dashboard')">⬅️ Annuler</button>
+                <h2 id="creator-view-title">Nouveau Support de Cours</h2>
+            </div>
+            
+            <form id="course-form" onsubmit="event.preventDefault();">
+                <div class="form-element">
+                    <label for="input-course-title">Titre global du cours :</label>
+                    <input type="text" id="input-course-title" placeholder="Ex: Anatomie : Le Système Digestif" required>
+                </div>
+                
+                <!-- Zone d'empilement dynamique des chapitres, mini-parties et questions -->
+                <div id="chapters-dynamic-stack"></div>
+
+                <div class="form-actions-builder">
+                    <button type="button" class="btn-builder-secondary" onclick="window.app.addChapterField()">➕ Ajouter un Chapitre</button>
+                    <button type="button" class="btn-builder-save" onclick="window.app.saveCreatedCourse()">💾 Compiler et Enregistrer le Cours</button>
+                </div>
+            </form>
+        </section>
+
+    </aside>
+
+    <!-- ================= BARRE DE NAVIGATION INFÉRIEURE FIXE ================= -->
+    <nav class="bottom-nav">
+        <button class="nav-button active" id="nav-home" onclick="window.app.switchView('dashboard')">
+            <span class="nav-icon">🏠</span>
+            <span class="nav-text">Accueil</span>
+        </button>
+        <button class="nav-button" id="nav-stats" onclick="window.app.switchView('stats')">
+            <span class="nav-icon">📊</span>
+            <span class="nav-text">Stats</span>
+        </button>
+        <button class="nav-button" id="nav-settings" onclick="window.app.switchView('settings')">
+            <span class="nav-icon">⚙️</span>
+            <span class="nav-text">Réglages</span>
+        </button>
+    </nav>
+
+    <!-- ================= SCRIPTS JAVASCRIPT LOGIQUES ET ARCHITECTURE DE DOSSIERS ================= -->
+    <script src="student.js"></script>
+    <script src="editor.js"></script>
+    <script src="lock.js"></script>
+
+    <!-- ================= ENREGISTREMENT DU SERVICE WORKER (PWA) ================= -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js')
+                    .catch((err) => console.error("Échec d'enregistrement du service worker :", err));
+            });
+        }
+    </script>
+</body>
+</html>
